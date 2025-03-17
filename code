@@ -1,0 +1,30 @@
+import streamlit as st
+import requests
+
+st.title("News Summarization & Sentiment Analysis")
+
+company = st.text_input("Enter Company Name:")
+
+if st.button("Fetch News"):
+    response = requests.get("http://127.0.0.1:5000/news", params={"company": company})
+    if response.status_code == 200:
+        news_data = response.json()
+        st.write(news_data)
+    else:
+        st.error("Failed to fetch news")
+
+text_input = st.text_area("Enter text for sentiment analysis:")
+if st.button("Analyze Sentiment"):
+    response = requests.post("http://127.0.0.1:5000/sentiment", json={"text": text_input})
+    if response.status_code == 200:
+        sentiment = response.json()["sentiment"]
+        st.write("Sentiment:", sentiment)
+    else:
+        st.error("Failed to analyze sentiment")
+
+if st.button("Generate TTS"):
+    response = requests.post("http://127.0.0.1:5000/tts", json={"text": text_input})
+    if response.status_code == 200:
+        st.audio("output.mp3")
+    else:
+        st.error("Failed to generate speech")
