@@ -1,3 +1,5 @@
+#APP
+
 import streamlit as st
 import requests
 
@@ -28,3 +30,149 @@ if st.button("Generate TTS"):
         st.audio("output.mp3")
     else:
         st.error("Failed to generate speech")
+
+
+
+#API
+
+
+from flask import Flask, request, jsonify
+import requests
+from bs4 import BeautifulSoup
+from textblob import TextBlob
+from gtts import gTTS
+import os
+import statistics
+
+app = Flask(__name__)
+
+# Function to scrape news articles
+def fetch_news(company_name):
+    search_url = f'https://news.google.com/search?q={company_name}'
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(search_url, headers=headers)
+    if response.status_code != 200:
+        return {'error': 'Failed to fetch news'}
+    soup = BeautifulSoup(response.text, 'html.parser')
+    articles = []
+    for item in soup.find_all('h3')[:10]:  # Extracting only 10 news articles
+        title = item.text
+        link = 'https://news.google.com' + item.a['href'][1:]
+        articles.append({'title': title, 'link': link})
+    return articles
+
+# Function to perform sentiment analysis
+def analyze_sentiment(text):
+    analysis = TextBlob(text)
+    if analysis.sentiment.polarity > 0:
+        return 'Positive'
+    elif analysis.sentiment.polarity < 0:
+        return 'Negative'
+    else:
+        return 'Neutral'
+
+# Function to perform comparative sentiment analysis
+def comparative_analysis(sentiments):
+    sentiment_scores = [1 if s == 'Positive' else -1 if s == 'Negative' else 0 for s in sentiments]
+    avg_sentiment = statistics.mean(sentiment_scores) if sentiment_scores else 0
+    return 'Positive' if avg_sentiment > 0 else 'Negative' if avg_sentiment < 0 else 'Neutral'
+
+# Function to generate Hindi TTS
+def text_to_speech(text, filename="output.mp3"):
+    tts = gTTS(text=text, lang='hi')
+    tts.save(filename)
+    return filename
+
+@app.route('/news', methods=['GET'])
+def get_news():
+    company = request.args.get('company')
+    if not company:
+        return jsonify({'error': 'Company name is required'}), 400
+    articles = fetch_news(company)
+    return jsonify({'company': company, 'articles': articles})
+
+@app.route('/sentiment', methods=['POST'])
+def get_sentiment():
+    data = request.json
+    if 'text' not in data:
+        return jsonify({'error': 'Text is required'}), 400
+    sentiment = analyze_sentiment(data['text'])
+    return jsonify({'sentiment': sentiment})
+
+@app.route('/tts', methods=['POST'])
+def generate_tts():
+    data = request.json
+    if 'text' not in data:
+        return jsonify({'error': 'Text is required'}), 400
+    filename = text_to_speech(data['text'])
+    return jsonify({'audio_file': filename})
+
+@app.route('/comparative_sentiment', methods=['POST'])
+def get_comparative_sentiment():
+    data = request.json
+    if 'sentiments' not in data:
+        return jsonify({'error': 'Sentiments list is required'}), 400
+    final_sentiment = comparative_analysis(data['sentiments'])
+    return jsonify({'comparative_sentiment': final_sentiment})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+#UTILS
+
+import requests
+from bs4 import BeautifulSoup
+from textblob import TextBlob
+from gtts import gTTS
+import os
+import statistics
+
+# Function to scrape news articles
+def fetch_news(company_name):
+    search_url = f'https://news.google.com/search?q={company_name}'
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(search_url, headers=headers)
+    if response.status_code != 200:
+        return {'error': 'Failed to fetch news'}
+    soup = BeautifulSoup(response.text, 'html.parser')
+    articles = []
+    for item in soup.find_all('h3')[:10]:
+        title = item.text
+        link = 'https://news.google.com' + item.a['href'][1:]
+        articles.append({'title': title, 'link': link})
+    return articles
+
+# Function to perform sentiment analysis
+def analyze_sentiment(text):
+    analysis = TextBlob(text)
+    if analysis.sentiment.polarity > 0:
+        return 'Positive'
+    elif analysis.sentiment.polarity < 0:
+        return 'Negative'
+    else:
+        return 'Neutral'
+
+# Function to perform comparative sentiment analysis
+def comparative_analysis(sentiments):
+    sentiment_scores = [1 if s == 'Positive' else -1 if s == 'Negative' else 0 for s in sentiments]
+    avg_sentiment = statistics.mean(sentiment_scores) if sentiment_scores else 0
+    return 'Positive' if avg_sentiment > 0 else 'Negative' if avg_sentiment < 0 else 'Neutral'
+
+# Function to generate Hindi TTS
+def text_to_speech(text, filename="output.mp3"):
+    tts = gTTS(text=text, lang='hi')
+    tts.save(filename)
+    return filename
+
+
+#REQUIRMENTS
+
+flask
+requests
+beautifulsoup4
+textblob
+gtts
+streamlit
+statistics
